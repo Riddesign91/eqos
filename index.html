@@ -205,7 +205,9 @@
             messagingSenderId: "967079657612",
             appId: "1:967079657612:web:394240ae3c509424ac3ba9"
         };
-        firebase.initializeApp(config);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(config);
+        }
         var auth = firebase.auth(), db = firebase.firestore();
         var selectedMood = "";
         var emojiMap = { 'alegre':'😊','divertido':'😋','normal':'😐','estresado':'🤯','triste':'😔','cansado':'😴','frustrante':'😫','aburrido':'😑' };
@@ -386,12 +388,18 @@
         }
 
         window.onload = function() {
+            document.getElementById('screen-app').style.display = 'block';
+            initApp();
+
             auth.onAuthStateChanged(user => {
-                if(user) {
-                    document.getElementById('screen-app').style.display = 'block';
-                    initApp();
+                if (user) {
                     checkStatus();
-                } else { auth.signInAnonymously(); }
+                } else {
+                    auth.signInAnonymously().catch(err => {
+                        console.error("Error Auth:", err);
+                        alert("Error de conexión con Firebase (" + err.code + "). Añade este dominio en Firebase > Authentication > Settings > Authorized domains.");
+                    });
+                }
             });
         };
 
@@ -402,89 +410,144 @@
             document.getElementById('date-label').innerText = f.charAt(0).toUpperCase() + f.slice(1);
             var inicio = new Date(hoy.getFullYear(), 0, 0);
             var diaIdx = Math.floor((hoy - inicio) / 86400000) - 1;
-            if (typeof qList !== 'undefined') document.getElementById('question-label').innerText = qList[diaIdx];
+            if (typeof qList !== 'undefined' && qList[diaIdx]) {
+                document.getElementById('question-label').innerText = qList[diaIdx];
+            }
         }
 
         function checkStatus() {
+            if (!auth.currentUser) return;
             var docRef = db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId());
             docRef.get().then(doc => {
                 if (doc.exists) {
                     var d = doc.data();
-                    if(d.texto) document.getElementById('text-zone').style.display = 'none';
-                    if(d.mood) document.getElementById('m-zone').style.display = 'none';
-                    loadWeeklyEmojis();
-                    loadYearsPast();
+                    if (d.texto) {
+                        document.getElementById('text-zone').style.display = 'none';
+                        loadYearsPast();
+                    }
+                    if (d.mood) {
+                        document.getElementById('m-zone').style.display = 'none';
+                        loadWeeklyEmojis();
+                    }
                 }
-            });
+            }).catch(err => console.error("Error leyendo estado:", err));
         }
 
         function handlePenClick() {
             var txt = document.getElementById('main-input');
-            if(!txt.value.trim()) { alert("Escribe algo primero."); return; }
+            if (!txt.value.trim()) { alert("Escribe algo primero."); return; }
+            if (!auth.currentUser) { alert("Conectando con Firebase, inténtalo de nuevo en un segundo."); return; }
+
+            var valorTexto = txt.value.trim();
             document.getElementById('text-zone').style.opacity = "0";
             txt.classList.add('ink-fade');
-            saveToFirebase('texto', txt.value);
-            setTimeout(() => {
-                document.getElementById('text-zone').style.display = "none";
-                loadYearsPast();
-            }, 800);
+
+            saveToFirebase('texto', valorTexto).then(() => {
+                setTimeout(() => {
+                    document.getElementById('text-zone').style.display = "none";
+                    loadYearsPast(valorTexto);
+                }, 800);
+            }).catch(err => {
+                document.getElementById('text-zone').style.opacity = "1";
+                txt.classList.remove('ink-fade');
+                alert("No se pudo guardar: " + err.message);
+            });
         }
 
         function handleMoodClick(m, el) {
+            if (!auth.currentUser) { alert("Conectando con Firebase, inténtalo de nuevo en un segundo."); return; }
+
             selectedMood = m;
             document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
             el.classList.add('selected');
             document.getElementById('m-zone').style.opacity = "0";
-            saveToFirebase('mood', m);
-            setTimeout(() => {
-                document.getElementById('m-zone').style.display = "none";
-                loadWeeklyEmojis();
-            }, 800);
+
+            saveToFirebase('mood', m).then(() => {
+                setTimeout(() => {
+                    document.getElementById('m-zone').style.display = "none";
+                    loadWeeklyEmojis(m);
+                }, 800);
+            }).catch(err => {
+                document.getElementById('m-zone').style.opacity = "1";
+                alert("No se pudo guardar la emoción: " + err.message);
+            });
         }
 
         function saveToFirebase(campo, valor) {
-            var data = { dia: new Date().getDate(), mes: new Date().getMonth()+1, año: new Date().getFullYear(), fecha: new Date() };
+            var data = { 
+                dia: new Date().getDate(), 
+                mes: new Date().getMonth()+1, 
+                año: new Date().getFullYear(), 
+                fecha: firebase.firestore.FieldValue.serverTimestamp() 
+            };
             data[campo] = valor;
-            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId()).set(data, { merge: true });
+            return db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId()).set(data, { merge: true });
         }
 
-        function loadWeeklyEmojis() {
+        function loadWeeklyEmojis(moodRecienGuardado) {
+            if (!auth.currentUser) return;
             db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas")
                 .orderBy("fecha", "desc").limit(7).get().then(snap => {
                     var emojis = [];
-                    snap.forEach(doc => { if(doc.data().mood) emojis.push(emojiMap[doc.data().mood]); });
-                    while(emojis.length < 7) { emojis.push(Object.values(emojiMap)[Math.floor(Math.random() * 8)]); }
+                    snap.forEach(doc => { 
+                        if (doc.data().mood && emojiMap[doc.data().mood]) {
+                            emojis.push(emojiMap[doc.data().mood]); 
+                        }
+                    });
+                    if (emojis.length === 0 && moodRecienGuardado) {
+                        emojis.push(emojiMap[moodRecienGuardado]);
+                    }
+                    while (emojis.length < 7) { 
+                        emojis.push(Object.values(emojiMap)[Math.floor(Math.random() * 8)]); 
+                    }
                     var w = document.getElementById('weekly-emojis');
                     w.innerText = emojis.reverse().join(''); 
+                    w.style.display = 'block';
+                    setTimeout(() => w.style.opacity = "1", 50);
+                }).catch(() => {
+                    // Respaldo visual si aún no hay índice creado en Firestore
+                    var emojis = moodRecienGuardado ? [emojiMap[moodRecienGuardado]] : [];
+                    while (emojis.length < 7) { emojis.push(Object.values(emojiMap)[Math.floor(Math.random() * 8)]); }
+                    var w = document.getElementById('weekly-emojis');
+                    w.innerText = emojis.reverse().join('');
                     w.style.display = 'block';
                     setTimeout(() => w.style.opacity = "1", 50);
                 });
         }
 
-        function loadYearsPast() {
+        function loadYearsPast(textoRecienGuardado) {
+            if (!auth.currentUser) return;
             var hoy = new Date();
+            var anioActual = hoy.getFullYear();
+
             db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas")
                 .where("dia", "==", hoy.getDate())
                 .where("mes", "==", hoy.getMonth() + 1)
                 .get().then(snap => {
                     var items = [];
                     snap.forEach(doc => items.push(doc.data()));
+
+                    // Asegura que el texto recién guardado aparezca al instante aunque el servidor tarde
+                    if (textoRecienGuardado && !items.some(x => x.año == anioActual && x.texto)) {
+                        items.push({ año: anioActual, texto: textoRecienGuardado });
+                    }
+
                     items.sort((a,b) => b.año - a.año);
                     var html = "";
                     items.forEach(d => {
-                        if(d.texto) {
-                            var extra = (d.año == 2026) ? "current-year" : "";
+                        if (d.texto) {
+                            var extra = (d.año == anioActual) ? "current-year" : "";
                             html += `<div class="hist-item"><span class="hist-year ${extra}">${d.año}</span><div class="hist-text">${d.texto}</div></div>`;
                         }
                     });
-                    if(items.filter(x => x.año < 2026).length === 0) {
-                        html += `<div class="hist-item"><span class="hist-year">2025</span><div class="hist-text">Un año atrás, soñando con el hoy.</div></div>`;
-                        html += `<div class="hist-item"><span class="hist-year">2024</span><div class="hist-text">Todo empezó con un primer trazo.</div></div>`;
+                    if (items.filter(x => x.año < anioActual).length === 0) {
+                        html += `<div class="hist-item"><span class="hist-year">${anioActual - 1}</span><div class="hist-text">Un año atrás, soñando con el hoy.</div></div>`;
+                        html += `<div class="hist-item"><span class="hist-year">${anioActual - 2}</span><div class="hist-text">Todo empezó con un primer trazo.</div></div>`;
                     }
                     var h = document.getElementById('hist');
                     h.innerHTML = html;
                     h.classList.add('hist-show');
-                });
+                }).catch(err => console.error("Error cargando historial:", err));
         }
 
         /* AUTOEVALUACIÓN MENSUAL */
@@ -492,15 +555,14 @@
             currentEvalStep = 0;
             evalData = {};
             document.getElementById('eval-modal').style.display = 'flex';
+            if (!auth.currentUser) { renderEvalStep(); return; }
             
             db.collection("usuarios").doc(auth.currentUser.uid).collection("evaluaciones_mensuales").doc(getMesId()).get().then(doc => {
-                if(doc.exists && doc.data().respuestas) {
+                if (doc.exists && doc.data().respuestas) {
                     evalData = doc.data().respuestas;
                 }
                 renderEvalStep();
-            }).catch(() => {
-                renderEvalStep();
-            });
+            }).catch(() => renderEvalStep());
         }
 
         function closeMonthlyEval() {
@@ -511,17 +573,17 @@
         function saveCurrentStepValues() {
             var sec = evalSections[currentEvalStep];
             sec.fields.forEach(f => {
-                if(f.type === "scale_group") {
+                if (f.type === "scale_group") {
                     f.items.forEach(it => {
                         var el = document.getElementById(it.id);
-                        if(el) evalData[it.id] = el.value;
+                        if (el) evalData[it.id] = el.value;
                     });
-                } else if(f.type === "radio") {
+                } else if (f.type === "radio") {
                     var sel = document.querySelector(`input[name="${f.id}"]:checked`);
-                    if(sel) evalData[f.id] = sel.value;
+                    if (sel) evalData[f.id] = sel.value;
                 } else {
                     var el = document.getElementById(f.id);
-                    if(el) evalData[f.id] = el.value;
+                    if (el) evalData[f.id] = el.value;
                 }
             });
         }
@@ -531,39 +593,25 @@
             document.getElementById('eval-step-tag').innerText = `Sección ${currentEvalStep + 1} de ${evalSections.length}`;
             
             var html = `<div class="eval-title">${sec.title}</div>`;
-            if(sec.desc) html += `<div style="font-size:0.85rem; opacity:0.8; margin-bottom:15px; font-style:italic;">${sec.desc}</div>`;
+            if (sec.desc) html += `<div style="font-size:0.85rem; opacity:0.8; margin-bottom:15px; font-style:italic;">${sec.desc}</div>`;
 
             sec.fields.forEach(f => {
                 var val = evalData[f.id] || "";
-                if(f.type === "textarea") {
-                    html += `<div class="eval-field">
-                        <label>${f.label}</label>
-                        <textarea class="eval-input-txt" id="${f.id}" placeholder="Escribe aquí...">${val}</textarea>
-                    </div>`;
-                } else if(f.type === "text") {
-                    html += `<div class="eval-field">
-                        <label>${f.label}</label>
-                        <input type="text" class="eval-input-txt" id="${f.id}" value="${val}" placeholder="...">
-                    </div>`;
-                } else if(f.type === "number") {
-                    html += `<div class="eval-field">
-                        <label>${f.label}</label>
-                        <input type="number" class="eval-input-txt" style="width:75px;" id="${f.id}" min="${f.min}" max="${f.max}" value="${val}">
-                    </div>`;
-                } else if(f.type === "scale_group") {
+                if (f.type === "textarea") {
+                    html += `<div class="eval-field"><label>${f.label}</label><textarea class="eval-input-txt" id="${f.id}" placeholder="Escribe aquí...">${val}</textarea></div>`;
+                } else if (f.type === "text") {
+                    html += `<div class="eval-field"><label>${f.label}</label><input type="text" class="eval-input-txt" id="${f.id}" value="${val}" placeholder="..."></div>`;
+                } else if (f.type === "number") {
+                    html += `<div class="eval-field"><label>${f.label}</label><input type="number" class="eval-input-txt" style="width:75px;" id="${f.id}" min="${f.min}" max="${f.max}" value="${val}"></div>`;
+                } else if (f.type === "scale_group") {
                     html += `<div class="eval-field"><label>${f.label}</label>`;
                     f.items.forEach(it => {
                         var itVal = evalData[it.id] || "";
-                        html += `<div class="scale-row">
-                            <span>${it.name}:</span>
-                            <div><input type="number" id="${it.id}" min="0" max="10" value="${itVal}"> /10</div>
-                        </div>`;
+                        html += `<div class="scale-row"><span>${it.name}:</span><div><input type="number" id="${it.id}" min="0" max="10" value="${itVal}"> /10</div></div>`;
                     });
                     html += `</div>`;
-                } else if(f.type === "radio") {
-                    html += `<div class="eval-field">
-                        <label>${f.label}</label>
-                        <div class="radio-options">`;
+                } else if (f.type === "radio") {
+                    html += `<div class="eval-field"><label>${f.label}</label><div class="radio-options">`;
                     f.options.forEach(opt => {
                         var checked = (val === opt) ? "checked" : "";
                         html += `<label><input type="radio" name="${f.id}" value="${opt}" ${checked}> ${opt}</label>`;
@@ -580,7 +628,7 @@
 
         function prevEvalStep() {
             saveCurrentStepValues();
-            if(currentEvalStep > 0) {
+            if (currentEvalStep > 0) {
                 currentEvalStep--;
                 renderEvalStep();
             }
@@ -588,10 +636,11 @@
 
         function nextEvalStep() {
             saveCurrentStepValues();
-            if(currentEvalStep < evalSections.length - 1) {
+            if (currentEvalStep < evalSections.length - 1) {
                 currentEvalStep++;
                 renderEvalStep();
             } else {
+                if (!auth.currentUser) { alert("No hay sesión activa en Firebase."); return; }
                 db.collection("usuarios").doc(auth.currentUser.uid).collection("evaluaciones_mensuales").doc(getMesId()).set({
                     fecha: new Date(),
                     mes: new Date().getMonth() + 1,
@@ -600,13 +649,10 @@
                 }).then(() => {
                     alert("¡Autoevaluación mensual guardada con éxito!");
                     document.getElementById('eval-modal').style.display = 'none';
-                }).catch(err => {
-                    alert("Error al guardar: " + err.message);
-                });
+                }).catch(err => alert("Error al guardar: " + err.message));
             }
         }
 
-        /* MODO NOCHE CON ASSETS DEDICADOS */
         function toggleT() {
             document.body.classList.toggle('dark-mode');
             var isD = document.body.classList.contains('dark-mode');
@@ -615,7 +661,7 @@
             var logo = document.getElementById('img-logo');
             var pen = document.getElementById('img-pen');
 
-            if(isD) {
+            if (isD) {
                 logo.src = 'eqos-logo-dark.png';
                 pen.src = 'eqos-pluma-dark.png';
             } else {
@@ -625,9 +671,17 @@
         }
 
         function reiniciarDia() {
-            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId()).delete().then(() => {
-                location.reload();
-            });
+            if (!auth.currentUser) {
+                alert("No hay sesión activa con Firebase. Revisa los dominios autorizados.");
+                return;
+            }
+            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId()).delete()
+                .then(() => {
+                    location.reload();
+                })
+                .catch(err => {
+                    alert("Error al reiniciar entrada: " + err.message);
+                });
         }
 
         function toggleModal(v) { document.getElementById('settings-modal').style.display = v ? 'flex' : 'none'; }
