@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Eqos - Diario Íntimo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="preguntas.js"></script>
+
+    <style>
+        :root { --bg: #f8f0ea; --brown: #6c4227; --ink: #8d6b53; --size: 2.2rem; }
+        body.dark-mode { --bg: #6c4227; --brown: #f8f0ea; --ink: #f8f0ea; }
+        
+        body { background: var(--bg); color: var(--brown); font-family: 'Playfair Display', serif; margin: 0; transition: 0.5s; overflow-x: hidden; }
+        .container { width: 92%; max-width: 500px; margin: 0 auto; padding: 10px 0; text-align: center; display: none; }
+        
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 5px; }
+        .logo { width: 90px; transition: 0.3s; }
+
+        .top-nav { display: flex; align-items: center; gap: 6px; }
+        .icon-btn { 
+            background: none; border: none; cursor: pointer; color: var(--brown); 
+            font-size: 1.4rem; padding: 5px; transition: 0.3s; display: inline-flex; 
+            align-items: center; justify-content: center; 
+        }
+        .icon-svg { width: 20px; height: 20px; stroke: var(--brown); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+        .date-label { text-align: left; font-size: 12px; margin-bottom: 2px; font-weight: bold; opacity: 0.8; }
+        .q-main { font-size: 1.5rem; font-weight: 700; margin: 0 0 20px 0; font-style: italic; line-height: 1.2; text-align: left; min-height: 50px; }
+        
+        #text-zone { transition: opacity 0.8s ease; }
+        .write-zone { display: flex; align-items: flex-end; border-bottom: 1px solid rgba(108,66,39,0.3); margin-bottom: 15px; }
+        body.dark-mode .write-zone { border-bottom: 1px solid rgba(248,240,234,0.3); }
+        textarea.daily-input { flex: 1; background: none; border: none; font-family: 'Great Vibes', cursive; font-size: var(--size); color: var(--ink); outline: none; height: 110px; resize: none; transition: 1s; }
+        .ink-fade { opacity: 0 !important; filter: blur(10px); pointer-events: none; }
+        .pen { width: 32px; cursor: pointer; margin-bottom: 8px; transition: 0.3s; }
+
+        #m-zone { transition: opacity 0.8s ease; margin-bottom: 20px; width: 100%; }
+        .mood-grid { display: flex; justify-content: space-between; width: 100%; gap: 2px; }
+        .mood-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .mood-btn { font-size: 1.2rem; cursor: pointer; opacity: 0.3; transition: 0.3s; }
+        .mood-btn.selected { opacity: 1; transform: scale(1.1); }
+        .mood-label { font-size: 6px; text-transform: uppercase; margin-top: 4px; opacity: 0.7; letter-spacing: 0px; text-align: center; }
+
+        #weekly-emojis { 
+            margin: 15px 0; font-size: 1.6rem; letter-spacing: 8px; 
+            display: none; opacity: 0; transition: opacity 1s ease;
+            border-bottom: 1px solid rgba(108,66,39,0.1); padding-bottom: 15px; 
+        }
+        body.dark-mode #weekly-emojis { border-bottom: 1px solid rgba(248,240,234,0.1); }
+
+        #hist { text-align: left; display: none; opacity: 0; transition: opacity 1s ease; margin-top: 10px; }
+        .hist-show { display: block !important; opacity: 1 !important; }
+        .hist-item { margin-bottom: 25px; }
+        .hist-year { font-size: 11px; font-weight: bold; opacity: 0.5; display: block; margin-bottom: 2px; }
+        .hist-text { font-family: 'Great Vibes', cursive; font-size: 2.2rem; color: var(--ink); line-height: 1.1; }
+        .current-year { color: var(--brown); opacity: 1; font-weight: bold; }
+
+        /* MODAL AUTOEVALUACIÓN MENSUAL */
+        #eval-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+            z-index: 2100; align-items: center; justify-content: center; padding: 15px; box-sizing: border-box;
+        }
+        .eval-box {
+            background: var(--bg); color: var(--brown); padding: 22px; width: 100%; 
+            max-width: 480px; max-height: 90vh; border-radius: 4px; box-sizing: border-box; 
+            display: flex; flex-direction: column; text-align: left;
+        }
+        .eval-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(108,66,39,0.2); padding-bottom: 8px; }
+        body.dark-mode .eval-header { border-bottom-color: rgba(248,240,234,0.2); }
+        .eval-step-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.65; }
+        .eval-body { overflow-y: auto; padding-right: 5px; margin-bottom: 15px; flex: 1; }
+        .eval-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 14px; font-style: italic; }
+        
+        .eval-field { margin-bottom: 16px; }
+        .eval-field label { display: block; font-size: 0.9rem; margin-bottom: 6px; line-height: 1.35; font-weight: 600; }
+        
+        .eval-input-txt {
+            width: 100%; background: rgba(108,66,39,0.05); border: 1px solid rgba(108,66,39,0.2);
+            color: var(--brown); font-family: 'Playfair Display', serif; font-size: 0.95rem; padding: 8px 10px;
+            box-sizing: border-box; outline: none; border-radius: 3px;
+        }
+        textarea.eval-input-txt { min-height: 65px; resize: vertical; }
+        body.dark-mode .eval-input-txt { background: rgba(248,240,234,0.08); border-color: rgba(248,240,234,0.2); color: var(--brown); }
+
+        .scale-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+        .scale-row input[type="number"] { width: 55px; text-align: center; padding: 4px; border: 1px solid rgba(108,66,39,0.3); background: transparent; color: var(--brown); font-family: 'Playfair Display', serif; }
+
+        .radio-options { display: flex; gap: 12px; margin-top: 5px; flex-wrap: wrap; }
+        .radio-options label { font-size: 0.85rem; font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+        .eval-nav { display: flex; justify-content: space-between; gap: 10px; }
+        .eval-btn {
+            background: var(--brown); color: var(--bg); border: none; padding: 10px 16px; 
+            cursor: pointer; font-family: 'Playfair Display', serif; font-size: 0.85rem; border-radius: 2px;
+        }
+        .eval-btn.secondary { background: none; border: 1px solid var(--brown); color: var(--brown); }
+
+        /* MODAL AJUSTES */
+        #settings-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+            z-index: 2200; align-items: center; justify-content: center;
+        }
+        .settings-box {
+            background: var(--bg); color: var(--brown); padding: 30px; 
+            width: 85%; max-width: 320px; border-radius: 4px; box-sizing: border-box; text-align: center;
+        }
+        .settings-title { font-size: 1.4rem; font-weight: 700; margin: 0 0 20px 0; }
+        .btn-action-brown {
+            width: 100%; padding: 12px; background: var(--brown); color: var(--bg); 
+            border: 1px solid var(--brown); cursor: pointer; font-family: 'Playfair Display', serif; 
+            font-size: 0.95rem; margin-bottom: 12px; transition: 0.3s;
+        }
+        .btn-outline-brown {
+            width: 100%; padding: 10px; background: transparent; color: var(--brown); 
+            border: 1px solid var(--brown); cursor: pointer; font-family: 'Playfair Display', serif; 
+            font-size: 0.9rem; transition: 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="screen-app" class="container">
+        <div class="header-top">
+            <img src="logo_eqos.png" id="img-logo" class="logo" alt="Eqos">
+            <div class="top-nav">
+                <!-- Icono Monocromo Marrón para el Calendario -->
+                <button class="icon-btn" onclick="openMonthlyEval()" title="Evaluación Mensual">
+                    <svg class="icon-svg" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                        <circle cx="8" cy="15" r="1" fill="var(--brown)"></circle>
+                        <circle cx="12" cy="15" r="1" fill="var(--brown)"></circle>
+                        <circle cx="16" cy="15" r="1" fill="var(--brown)"></circle>
+                    </svg>
+                </button>
+                <button class="icon-btn" onclick="toggleModal(true)">🛠</button> 
+                <button class="icon-btn" id="theme-icon" onclick="toggleT()">☾</button> 
+                <button class="icon-btn" onclick="logout()">&#10005;</button>
+            </div>
+        </div>
+
+        <div id="date-label" class="date-label"></div>
+        <div id="question-label" class="q-main"></div>
+        
+        <div id="text-zone">
+            <div class="write-zone">
+                <textarea id="main-input" class="daily-input" placeholder="Comienza a escribir..."></textarea>
+                <img src="pluma_eqos.png" id="img-pen" class="pen" onclick="handlePenClick()" alt="Guardar">
+            </div>
+        </div>
+
+        <div id="m-zone">
+            <div class="mood-grid">
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('alegre', this)">😊</span><span class="mood-label">Alegre</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('divertido', this)">😋</span><span class="mood-label">Divertido</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('normal', this)">😐</span><span class="mood-label">Normal</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('estresado', this)">🤯</span><span class="mood-label">Estresado</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('triste', this)">😔</span><span class="mood-label">Triste</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('cansado', this)">😴</span><span class="mood-label">Cansado</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('frustrante', this)">😫</span><span class="mood-label">Frustrante</span></div>
+                <div class="mood-item"><span class="mood-btn" onclick="handleMoodClick('aburrido', this)">😑</span><span class="mood-label">Aburrido</span></div>
+            </div>
+        </div>
+
+        <div id="weekly-emojis"></div>
+        <div id="hist"></div>
+    </div>
+
+    <!-- MODAL AJUSTES -->
+    <div id="settings-modal">
+        <div class="settings-box">
+            <div class="settings-title">Ajustes</div>
+            <button class="btn-action-brown" onclick="reiniciarDia()">Reiniciar entrada de hoy</button>
+            <button class="btn-outline-brown" onclick="toggleModal(false)">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- MODAL AUTOEVALUACIÓN MENSUAL -->
+    <div id="eval-modal">
+        <div class="eval-box">
+            <div class="eval-header">
+                <span class="eval-step-tag" id="eval-step-tag">Sección 1 de 13</span>
+                <span onclick="closeMonthlyEval()" style="cursor:pointer; font-size:1.2rem;">&#10005;</span>
+            </div>
+            <div class="eval-body" id="eval-content"></div>
+            <div class="eval-nav">
+                <button class="eval-btn secondary" id="eval-prev-btn" onclick="prevEvalStep()">Anterior</button>
+                <button class="eval-btn" id="eval-next-btn" onclick="nextEvalStep()">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var config = {
+            apiKey: "AIzaSyA637ooMYUfNbhBeQgvUSqdcDCRHR8a5GY",
+            authDomain: "eqos-4c3b0.firebaseapp.com",
+            projectId: "eqos-4c3b0",
+            storageBucket: "eqos-4c3b0.firebasestorage.app",
+            messagingSenderId: "967079657612",
+            appId: "1:967079657612:web:394240ae3c509424ac3ba9"
+        };
+        firebase.initializeApp(config);
+        var auth = firebase.auth(), db = firebase.firestore();
+        var selectedMood = "";
+        var emojiMap = { 'alegre':'😊','divertido':'😋','normal':'😐','estresado':'🤯','triste':'😔','cansado':'😴','frustrante':'😫','aburrido':'😑' };
+
+        var evalSections = [
+            {
+                title: "1. ¿CÓMO LLEGO HOY?",
+                desc: "Antes de analizar nada, paro unos minutos y observo cómo estoy.",
+                fields: [
+                    { id: "s1_encuentro", label: "¿Cómo me encuentro ahora mismo?", type: "textarea" },
+                    { type: "scale_group", label: "Mi estado del 0 al 10:", items: [
+                        { id: "s1_bienestar", name: "Bienestar general" },
+                        { id: "s1_energia", name: "Energía" },
+                        { id: "s1_estres", name: "Estrés" },
+                        { id: "s1_animo", name: "Estado de ánimo" },
+                        { id: "s1_control", name: "Sensación de control sobre mi vida" },
+                        { id: "s1_conexion", name: "Conexión conmigo mismo" }
+                    ]},
+                    { id: "s1_emociones", label: "¿Qué emociones están más presentes ahora?", type: "text" },
+                    { id: "s1_tres_palabras", label: "Si tuviera que describir mi estado actual en tres palabras:", type: "text" }
+                ]
+            },
+            {
+                title: "2. REVISIÓN DEL MES",
+                desc: "Balance reflexivo de lo vivido.",
+                fields: [
+                    { id: "s2_bien_sentir", label: "Lo que ha ido bien: ¿Qué cosas me han hecho sentir bien este mes?", type: "textarea" },
+                    { id: "s2_bien_recordar", label: "¿Qué momentos quiero recordar?", type: "textarea" },
+                    { id: "s2_bien_personas", label: "¿Qué personas, actividades o situaciones me han aportado?", type: "textarea" },
+                    { id: "s2_bien_yo", label: "¿Qué he hecho bien yo?", type: "textarea" },
+                    { id: "s2_mal_malestar", label: "Lo que me ha costado: ¿Qué situaciones me han generado malestar?", type: "textarea" },
+                    { id: "s2_mal_preocupacion", label: "¿Qué me ha preocupado especialmente?", type: "textarea" },
+                    { id: "s2_mal_evitado", label: "¿Ha habido alguna situación que haya evitado?", type: "textarea" },
+                    { id: "s2_mal_pendiente", label: "¿Hay algo que todavía tengo pendiente emocionalmente?", type: "textarea" }
+                ]
+            },
+            {
+                title: "3. MIS MOMENTOS IMPORTANTES",
+                desc: "Elige uno o dos acontecimientos del mes con especial impacto en ti.",
+                fields: [
+                    { id: "s3_situacion", label: "Situación: ¿Qué ocurrió?", type: "textarea" },
+                    { id: "s3_pensamientos", label: "Pensamientos: ¿Qué me pasó por la cabeza? ¿Qué interpreté o supuse?", type: "textarea" },
+                    { id: "s3_emociones", label: "Emociones: ¿Qué sentí?", type: "text" },
+                    { id: "s3_intensidad", label: "Intensidad de la emoción (0–10):", type: "number", min: 0, max: 10 },
+                    { id: "s3_reaccion", label: "Reacción: ¿Qué hice después?", type: "textarea" },
+                    { id: "s3_resultado", label: "Resultado: ¿Qué ocurrió como consecuencia?", type: "textarea" },
+                    { id: "s3_mirada_actual", label: "Mirándolo ahora: ¿Lo veo de la misma manera? ¿Qué podría haber hecho diferente?", type: "textarea" }
+                ]
+            },
+            {
+                title: "4. DETECTANDO PATRONES",
+                desc: "Miro el mes desde cierta distancia.",
+                fields: [
+                    { id: "s4_repetido", label: "¿Hay algo que se haya repetido?", type: "textarea" },
+                    { id: "s4_reaccion_parecida", label: "¿He reaccionado de manera parecida en diferentes situaciones?", type: "textarea" },
+                    { id: "s4_pensamientos_frecuentes", label: "¿Hay pensamientos que aparecen una y otra vez?", type: "textarea" },
+                    { id: "s4_tiendo_evitar", label: "¿Hay algo que tiendo a evitar?", type: "textarea" },
+                    { id: "s4_necesidad_desoída", label: "¿Hay alguna necesidad mía que no estoy escuchando?", type: "textarea" },
+                    { id: "s4_pregunta_clave", label: "¿Qué estaba intentando conseguir, evitar o proteger cuando reaccioné de esa manera?", type: "textarea" }
+                ]
+            },
+            {
+                title: "5. ¿CÓMO ME ESTOY TRATANDO?",
+                desc: "Observa tu diálogo interior con sinceridad.",
+                fields: [
+                    { id: "s5_error", label: "Cuando cometo un error, normalmente me digo:", type: "text" },
+                    { id: "s5_inesperado", label: "Cuando algo no me sale como esperaba:", type: "text" },
+                    { id: "s5_comparacion", label: "Cuando me comparo con otras personas:", type: "text" },
+                    { id: "s5_cansado", label: "Cuando estoy cansado o saturado:", type: "text" },
+                    { id: "s5_alguien_querido", label: "Si le ocurriera a alguien que quieres mucho, ¿qué le dirías? ¿Puedo decirme algo parecido a mí mismo?", type: "textarea" }
+                ]
+            },
+            {
+                title: "6. LO QUE NECESITO",
+                desc: "Completa según tus necesidades reales actuales.",
+                fields: [
+                    { id: "s6_mas", label: "Ahora mismo necesito más...", type: "text" },
+                    { id: "s6_menos", label: "Necesito menos...", type: "text" },
+                    { id: "s6_empezar", label: "Necesito empezar a...", type: "text" },
+                    { id: "s6_dejar", label: "Necesito dejar de...", type: "text" },
+                    { id: "s6_permitir", label: "Necesito permitirme...", type: "text" },
+                    { id: "s6_hablar", label: "Necesito hablar con alguien sobre...", type: "text" },
+                    { id: "s6_limite", label: "Necesito poner un límite en...", type: "text" }
+                ]
+            },
+            {
+                title: "7. MI TEMA PRINCIPAL",
+                desc: "Elige una sola cuestión para enfocar este mes.",
+                fields: [
+                    { id: "s7_tema", label: "Si tuviera que elegir UNA cuestión para trabajar este mes, sería:", type: "textarea" },
+                    { id: "s7_porque", label: "¿Por qué es importante para mí?", type: "textarea" },
+                    { id: "s7_depende_mi", label: "¿Qué parte depende de mí?", type: "textarea" },
+                    { id: "s7_no_depende_mi", label: "¿Qué parte NO depende de mí?", type: "textarea" },
+                    { id: "s7_aprendizaje", label: "¿Qué puedo aprender de esto?", type: "textarea" },
+                    { id: "s7_diferente", label: "¿Qué quiero hacer diferente la próxima vez?", type: "textarea" }
+                ]
+            },
+            {
+                title: "8. HABLANDO CON MI 'YO TERAPÉUTICO'",
+                desc: "Imagina que tu psicóloga/terapeuta está delante y le cuentas todo lo anterior.",
+                fields: [
+                    { id: "s8_preguntaria", label: "¿Qué creo que me preguntaría?", type: "textarea" },
+                    { id: "s8_diria", label: "¿Qué me diría probablemente?", type: "textarea" },
+                    { id: "s8_evito_hacerme", label: "¿Qué pregunta estoy evitando hacerme?", type: "textarea" },
+                    { id: "s8_sincero", label: "¿Qué respuesta creo que encontraría si fuera completamente sincero conmigo?", type: "textarea" }
+                ]
+            },
+            {
+                title: "9. MIS VALORES",
+                desc: "La persona que quieres ser, no la persona 'perfecta' que crees deberías ser.",
+                fields: [
+                    { id: "s9_con_demas", label: "¿Qué tipo de persona quiero ser con los demás?", type: "textarea" },
+                    { id: "s9_conmigo", label: "¿Qué tipo de persona quiero ser conmigo mismo?", type: "textarea" },
+                    { id: "s9_importantes", label: "¿Qué cosas son realmente importantes para mí?", type: "textarea" },
+                    { id: "s9_acuerdo", label: "¿Estoy viviendo de acuerdo con ellas?", type: "radio", options: ["Mucho", "Bastante", "Regular", "Poco"] },
+                    { id: "s9_distancia", label: "¿Dónde noto mayor distancia entre lo que quiero y lo que estoy haciendo?", type: "textarea" }
+                ]
+            },
+            {
+                title: "10. PLAN PARA EL PRÓXIMO MES",
+                desc: "Máximo tres objetivos concretos y sostenibles.",
+                fields: [
+                    { id: "s10_mejorar_obj", label: "1. Algo que quiero mejorar (Objetivo):", type: "text" },
+                    { id: "s10_mejorar_paso", label: "Primer paso concreto y cuándo lo haré:", type: "text" },
+                    { id: "s10_cuidar_obj", label: "2. Algo que quiero cuidar (Objetivo):", type: "text" },
+                    { id: "s10_cuidar_paso", label: "Primer paso concreto y cuándo lo haré:", type: "text" },
+                    { id: "s10_disfrutar_obj", label: "3. Algo que quiero disfrutar (Objetivo):", type: "text" },
+                    { id: "s10_disfrutar_paso", label: "Primer paso concreto y cuándo lo haré:", type: "text" }
+                ]
+            },
+            {
+                title: "11. MI COMPROMISO CONMIGO",
+                desc: "Recordatorios y anclajes personales.",
+                fields: [
+                    { id: "s11_recordar", label: "Este mes quiero intentar recordar:", type: "textarea" },
+                    { id: "s11_dificil", label: "Cuando las cosas se pongan difíciles, quiero acordarme de:", type: "textarea" },
+                    { id: "s11_frase", label: "Una frase que quiero llevarme de esta sesión:", type: "text" }
+                ]
+            },
+            {
+                title: "12. CIERRE DE SESIÓN",
+                desc: "Cerrando el espacio reflexivo.",
+                fields: [
+                    { id: "s12_siento_ahora", label: "¿Cómo me siento ahora?", type: "text" },
+                    { id: "s12_estado_final", label: "Mi estado del 0 al 10:", type: "number", min: 0, max: 10 },
+                    { id: "s12_descubierto", label: "¿Qué he descubierto sobre mí?", type: "textarea" },
+                    { id: "s12_me_llevo", label: "¿Qué me llevo de esta sesión?", type: "textarea" },
+                    { id: "s12_pequeno_paso", label: "¿Cuál es mi siguiente pequeño paso?", type: "text" }
+                ]
+            },
+            {
+                title: "RESUMEN DE ESTE MES",
+                desc: "Ficha síntesis consolidada.",
+                fields: [
+                    { id: "res_estado", label: "Mi estado (0 al 10):", type: "number", min: 0, max: 10 },
+                    { id: "res_mejor", label: "Lo mejor del mes:", type: "text" },
+                    { id: "res_dificil", label: "Lo más difícil:", type: "text" },
+                    { id: "res_patron", label: "Mi patrón principal:", type: "text" },
+                    { id: "res_necesito", label: "Lo que necesito:", type: "text" },
+                    { id: "res_tema", label: "Mi tema principal:", type: "text" },
+                    { id: "res_accion", label: "Mi acción más importante:", type: "text" },
+                    { id: "res_recordar", label: "Lo que quiero recordar:", type: "text" }
+                ]
+            }
+        ];
+
+        var currentEvalStep = 0;
+        var evalData = {};
+
+        function getHoyId() {
+            var d = new Date();
+            return d.getDate() + "-" + (d.getMonth()+1) + "-" + d.getFullYear();
+        }
+
+        function getMesId() {
+            var d = new Date();
+            return (d.getMonth()+1) + "-" + d.getFullYear();
+        }
+
+        window.onload = function() {
+            auth.onAuthStateChanged(user => {
+                if(user) {
+                    document.getElementById('screen-app').style.display = 'block';
+                    initApp();
+                    checkStatus();
+                } else { auth.signInAnonymously(); }
+            });
+        };
+
+        function initApp() {
+            var hoy = new Date();
+            var opciones = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            var f = hoy.toLocaleDateString('es-ES', opciones);
+            document.getElementById('date-label').innerText = f.charAt(0).toUpperCase() + f.slice(1);
+            var inicio = new Date(hoy.getFullYear(), 0, 0);
+            var diaIdx = Math.floor((hoy - inicio) / 86400000) - 1;
+            if (typeof qList !== 'undefined') document.getElementById('question-label').innerText = qList[diaIdx];
+        }
+
+        function checkStatus() {
+            var docRef = db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId());
+            docRef.get().then(doc => {
+                if (doc.exists) {
+                    var d = doc.data();
+                    if(d.texto) document.getElementById('text-zone').style.display = 'none';
+                    if(d.mood) document.getElementById('m-zone').style.display = 'none';
+                    loadWeeklyEmojis();
+                    loadYearsPast();
+                }
+            });
+        }
+
+        function handlePenClick() {
+            var txt = document.getElementById('main-input');
+            if(!txt.value.trim()) { alert("Escribe algo primero."); return; }
+            document.getElementById('text-zone').style.opacity = "0";
+            txt.classList.add('ink-fade');
+            saveToFirebase('texto', txt.value);
+            setTimeout(() => {
+                document.getElementById('text-zone').style.display = "none";
+                loadYearsPast();
+            }, 800);
+        }
+
+        function handleMoodClick(m, el) {
+            selectedMood = m;
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('m-zone').style.opacity = "0";
+            saveToFirebase('mood', m);
+            setTimeout(() => {
+                document.getElementById('m-zone').style.display = "none";
+                loadWeeklyEmojis();
+            }, 800);
+        }
+
+        function saveToFirebase(campo, valor) {
+            var data = { dia: new Date().getDate(), mes: new Date().getMonth()+1, año: new Date().getFullYear(), fecha: new Date() };
+            data[campo] = valor;
+            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId()).set(data, { merge: true });
+        }
+
+        function loadWeeklyEmojis() {
+            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas")
+                .orderBy("fecha", "desc").limit(7).get().then(snap => {
+                    var emojis = [];
+                    snap.forEach(doc => { if(doc.data().mood) emojis.push(emojiMap[doc.data().mood]); });
+                    while(emojis.length < 7) { emojis.push(Object.values(emojiMap)[Math.floor(Math.random() * 8)]); }
+                    var w = document.getElementById('weekly-emojis');
+                    w.innerText = emojis.reverse().join(''); 
+                    w.style.display = 'block';
+                    setTimeout(() => w.style.opacity = "1", 50);
+                });
+        }
+
+        function loadYearsPast() {
+            var hoy = new Date();
+            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas")
+                .where("dia", "==", hoy.getDate())
+                .where("mes", "==", hoy.getMonth() + 1)
+                .get().then(snap => {
+                    var items = [];
+                    snap.forEach(doc => items.push(doc.data()));
+                    items.sort((a,b) => b.año - a.año);
+                    var html = "";
+                    items.forEach(d => {
+                        if(d.texto) {
+                            var extra = (d.año == 2026) ? "current-year" : "";
+                            html += `<div class="hist-item"><span class="hist-year ${extra}">${d.año}</span><div class="hist-text">${d.texto}</div></div>`;
+                        }
+                    });
+                    if(items.filter(x => x.año < 2026).length === 0) {
+                        html += `<div class="hist-item"><span class="hist-year">2025</span><div class="hist-text">Un año atrás, soñando con el hoy.</div></div>`;
+                        html += `<div class="hist-item"><span class="hist-year">2024</span><div class="hist-text">Todo empezó con un primer trazo.</div></div>`;
+                    }
+                    var h = document.getElementById('hist');
+                    h.innerHTML = html;
+                    h.classList.add('hist-show');
+                });
+        }
+
+        /* AUTOEVALUACIÓN MENSUAL */
+        function openMonthlyEval() {
+            currentEvalStep = 0;
+            evalData = {};
+            document.getElementById('eval-modal').style.display = 'flex';
+            
+            db.collection("usuarios").doc(auth.currentUser.uid).collection("evaluaciones_mensuales").doc(getMesId()).get().then(doc => {
+                if(doc.exists && doc.data().respuestas) {
+                    evalData = doc.data().respuestas;
+                }
+                renderEvalStep();
+            }).catch(() => {
+                renderEvalStep();
+            });
+        }
+
+        function closeMonthlyEval() {
+            saveCurrentStepValues();
+            document.getElementById('eval-modal').style.display = 'none';
+        }
+
+        function saveCurrentStepValues() {
+            var sec = evalSections[currentEvalStep];
+            sec.fields.forEach(f => {
+                if(f.type === "scale_group") {
+                    f.items.forEach(it => {
+                        var el = document.getElementById(it.id);
+                        if(el) evalData[it.id] = el.value;
+                    });
+                } else if(f.type === "radio") {
+                    var sel = document.querySelector(`input[name="${f.id}"]:checked`);
+                    if(sel) evalData[f.id] = sel.value;
+                } else {
+                    var el = document.getElementById(f.id);
+                    if(el) evalData[f.id] = el.value;
+                }
+            });
+        }
+
+        function renderEvalStep() {
+            var sec = evalSections[currentEvalStep];
+            document.getElementById('eval-step-tag').innerText = `Sección ${currentEvalStep + 1} de ${evalSections.length}`;
+            
+            var html = `<div class="eval-title">${sec.title}</div>`;
+            if(sec.desc) html += `<div style="font-size:0.85rem; opacity:0.8; margin-bottom:15px; font-style:italic;">${sec.desc}</div>`;
+
+            sec.fields.forEach(f => {
+                var val = evalData[f.id] || "";
+                if(f.type === "textarea") {
+                    html += `<div class="eval-field">
+                        <label>${f.label}</label>
+                        <textarea class="eval-input-txt" id="${f.id}" placeholder="Escribe aquí...">${val}</textarea>
+                    </div>`;
+                } else if(f.type === "text") {
+                    html += `<div class="eval-field">
+                        <label>${f.label}</label>
+                        <input type="text" class="eval-input-txt" id="${f.id}" value="${val}" placeholder="...">
+                    </div>`;
+                } else if(f.type === "number") {
+                    html += `<div class="eval-field">
+                        <label>${f.label}</label>
+                        <input type="number" class="eval-input-txt" style="width:75px;" id="${f.id}" min="${f.min}" max="${f.max}" value="${val}">
+                    </div>`;
+                } else if(f.type === "scale_group") {
+                    html += `<div class="eval-field"><label>${f.label}</label>`;
+                    f.items.forEach(it => {
+                        var itVal = evalData[it.id] || "";
+                        html += `<div class="scale-row">
+                            <span>${it.name}:</span>
+                            <div><input type="number" id="${it.id}" min="0" max="10" value="${itVal}"> /10</div>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                } else if(f.type === "radio") {
+                    html += `<div class="eval-field">
+                        <label>${f.label}</label>
+                        <div class="radio-options">`;
+                    f.options.forEach(opt => {
+                        var checked = (val === opt) ? "checked" : "";
+                        html += `<label><input type="radio" name="${f.id}" value="${opt}" ${checked}> ${opt}</label>`;
+                    });
+                    html += `</div></div>`;
+                }
+            });
+
+            document.getElementById('eval-content').innerHTML = html;
+            document.getElementById('eval-prev-btn').style.visibility = (currentEvalStep === 0) ? 'hidden' : 'visible';
+            document.getElementById('eval-next-btn').innerText = (currentEvalStep === evalSections.length - 1) ? "Finalizar y Guardar" : "Siguiente";
+            document.getElementById('eval-content').scrollTop = 0;
+        }
+
+        function prevEvalStep() {
+            saveCurrentStepValues();
+            if(currentEvalStep > 0) {
+                currentEvalStep--;
+                renderEvalStep();
+            }
+        }
+
+        function nextEvalStep() {
+            saveCurrentStepValues();
+            if(currentEvalStep < evalSections.length - 1) {
+                currentEvalStep++;
+                renderEvalStep();
+            } else {
+                db.collection("usuarios").doc(auth.currentUser.uid).collection("evaluaciones_mensuales").doc(getMesId()).set({
+                    fecha: new Date(),
+                    mes: new Date().getMonth() + 1,
+                    año: new Date().getFullYear(),
+                    respuestas: evalData
+                }).then(() => {
+                    alert("¡Autoevaluación mensual guardada con éxito!");
+                    document.getElementById('eval-modal').style.display = 'none';
+                }).catch(err => {
+                    alert("Error al guardar: " + err.message);
+                });
+            }
+        }
+
+        /* MODO NOCHE CON ASSETS DEDICADOS */
+        function toggleT() {
+            document.body.classList.toggle('dark-mode');
+            var isD = document.body.classList.contains('dark-mode');
+            document.getElementById('theme-icon').innerHTML = isD ? '☀︎' : '☾';
+
+            var logo = document.getElementById('img-logo');
+            var pen = document.getElementById('img-pen');
+
+            if(isD) {
+                logo.src = 'eqos-logo-dark.png';
+                pen.src = 'eqos-pluma-dark.png';
+            } else {
+                logo.src = 'logo_eqos.png';
+                pen.src = 'pluma_eqos.png';
+            }
+        }
+
+        function reiniciarDia() {
+            db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").doc(getHoyId()).delete().then(() => {
+                location.reload();
+            });
+        }
+
+        function toggleModal(v) { document.getElementById('settings-modal').style.display = v ? 'flex' : 'none'; }
+        function logout() { auth.signOut().then(() => location.reload()); }
+    </script>
+</body>
+</html>

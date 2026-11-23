@@ -1,0 +1,20 @@
+{
+  "short_name": "Eqos",
+  "name": "Eqos - Diario Íntimo",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "theme_color": "#f8f0ea",
+  "background_color": "#f8f0ea",
+  "icons": [
+    {
+      "src": "logo_eqos.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo_eqos.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
