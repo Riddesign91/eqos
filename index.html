@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Eqos">
+    <meta name="theme-color" content="#f8f0ea">
+    <link rel="apple-touch-icon" href="logo_eqos.png">
+    <link rel="manifest" id="pwa-manifest">
     <title>Eqos - Diario Íntimo</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -21,7 +27,7 @@
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 2px; }
         .logo { width: 85px; transition: 0.3s; }
 
-        .top-nav { display: flex; align-items: center; gap: 3px; }
+        .top-nav { display: flex; align-items: center; gap: 4px; }
         .icon-btn { 
             background: none; border: none; cursor: pointer; color: var(--brown); 
             font-size: 1.3rem; padding: 5px; transition: 0.3s; display: inline-flex; 
@@ -117,17 +123,15 @@
         .past-eval-card h4 { margin: 0 0 6px 0; font-size: 1rem; }
         .past-eval-card p { margin: 3px 0; font-size: 0.82rem; opacity: 0.9; }
 
-        /* MAPA ANUAL DE EMOCIONES (365 DÍAS) */
-        .year-grid { display: grid; grid-template-columns: repeat(19, 1fr); gap: 4px; margin: 12px 0; }
-        .day-dot { aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--border-soft); position: relative; }
+        /* MAPA EMOCIONAL ORGANIZADO POR MESES */
+        .months-wrapper { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 10px 0; }
+        .month-card { border: 1px solid var(--border-soft); padding: 8px; border-radius: 3px; background: var(--card-bg); }
+        .month-card-title { font-size: 0.78rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; opacity: 0.85; }
+        .month-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .day-dot { aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--border-soft); font-size: 7px; display: flex; align-items: center; justify-content: center; }
         .mood-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.72rem; margin-top: 12px; border-top: 1px solid var(--border-soft); padding-top: 10px; }
         .legend-item { display: flex; align-items: center; gap: 4px; }
         .legend-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-
-        /* BUSCADOR */
-        .search-result-item { border-bottom: 1px solid var(--border-soft); padding: 10px 0; }
-        .search-result-meta { font-size: 11px; opacity: 0.65; display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .search-result-txt { font-family: 'Great Vibes', cursive; font-size: 1.7rem; color: var(--ink); line-height: 1.15; }
 
         /* AJUSTES SECCIONES */
         .settings-group { border-bottom: 1px solid var(--border-soft); padding-bottom: 14px; margin-bottom: 14px; }
@@ -184,15 +188,8 @@
         <div class="header-top">
             <img src="logo_eqos.png" id="img-logo" class="logo" alt="Eqos" onerror="handleLogoFallback(this)">
             <div class="top-nav">
-                <!-- Buscador de recuerdos -->
-                <button class="icon-btn" onclick="openSearchModal()" title="Buscar recuerdos">
-                    <svg class="icon-svg" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="7"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                </button>
-                <!-- Mapa Anual de Emociones -->
-                <button class="icon-btn" onclick="openYearMapModal()" title="Mapa anual de emociones">
+                <!-- Mapa Emocional por Meses -->
+                <button class="icon-btn" onclick="openYearMapModal()" title="Mapa emocional por meses">
                     <svg class="icon-svg" viewBox="0 0 24 24">
                         <circle cx="6" cy="6" r="1.5" fill="var(--brown)"></circle>
                         <circle cx="12" cy="6" r="1.5"></circle>
@@ -268,10 +265,15 @@
                 <span onclick="toggleModal(false)" style="cursor:pointer; font-size:1.2rem;">&#10005;</span>
             </div>
             <div class="modal-body">
-                <!-- Entrada del día -->
+                <!-- Entrada del día y exportación -->
                 <div class="settings-group">
                     <button class="btn-brown btn-full" onclick="reiniciarDia()">Reiniciar entrada de hoy</button>
-                    <button class="btn-outline btn-full" style="margin-bottom:0;" onclick="exportarDiario()">Exportar diario y evaluaciones (PDF)</button>
+                    <button class="btn-outline btn-full" onclick="exportarDiario()">Exportar diario y evaluaciones (PDF)</button>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-outline" style="flex:1; margin-bottom:0;" onclick="exportarJSON()">Descargar copia (.json)</button>
+                        <button class="btn-outline" style="flex:1; margin-bottom:0;" onclick="document.getElementById('import-json-input').click()">Restaurar (.json)</button>
+                        <input type="file" id="import-json-input" accept=".json,application/json" style="display:none;" onchange="importarJSON(event)">
+                    </div>
                 </div>
 
                 <!-- Tamaño de letra caligráfica -->
@@ -317,30 +319,7 @@
         </div>
     </div>
 
-    <!-- MODAL BUSCADOR DE RECUERDOS -->
-    <div id="search-modal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-title">Buscar recuerdos</div>
-                <span onclick="closeSearchModal()" style="cursor:pointer; font-size:1.2rem;">&#10005;</span>
-            </div>
-            <input type="text" id="search-text-input" class="input-clean" placeholder="Buscar por palabra..." oninput="filterMemories()">
-            <select id="search-mood-select" class="input-clean" onchange="filterMemories()">
-                <option value="">Todas las emociones</option>
-                <option value="alegre">😊 Alegre</option>
-                <option value="divertido">😋 Divertido</option>
-                <option value="normal">😐 Normal</option>
-                <option value="estresado">🤯 Estresado</option>
-                <option value="triste">😔 Triste</option>
-                <option value="cansado">😴 Cansado</option>
-                <option value="frustrante">😫 Frustrante</option>
-                <option value="aburrido">😑 Aburrido</option>
-            </select>
-            <div class="modal-body" id="search-results-list"></div>
-        </div>
-    </div>
-
-    <!-- MODAL MAPA ANUAL DE EMOCIONES -->
+    <!-- MODAL MAPA EMOCIONAL POR MESES -->
     <div id="year-map-modal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
@@ -348,8 +327,8 @@
                 <span onclick="closeYearMapModal()" style="cursor:pointer; font-size:1.2rem;">&#10005;</span>
             </div>
             <div class="modal-body">
-                <div style="font-size:0.8rem; opacity:0.75; margin-bottom:8px;">Cada punto representa un día del año según el estado registrado.</div>
-                <div class="year-grid" id="year-grid-container"></div>
+                <div style="font-size:0.8rem; opacity:0.75; margin-bottom:8px;">Estado emocional registrado mes a mes durante el año.</div>
+                <div class="months-wrapper" id="months-grid-container"></div>
                 <div class="mood-legend" id="mood-legend-container"></div>
             </div>
         </div>
@@ -383,6 +362,31 @@
     </div>
 
     <script>
+        /* CONFIGURACIÓN PWA NATIVA (IDEA 2) */
+        (function setupPWA() {
+            var baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            var manifestObj = {
+                name: "Eqos - Diario Íntimo",
+                short_name: "Eqos",
+                start_url: baseUrl,
+                display: "standalone",
+                background_color: "#f8f0ea",
+                theme_color: "#6c4227",
+                icons: [
+                    { src: baseUrl + "logo_eqos.png", sizes: "192x192", type: "image/png" },
+                    { src: baseUrl + "logo_eqos.png", sizes: "512x512", type: "image/png" }
+                ]
+            };
+            var manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+            document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+            if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+                var swCode = "self.addEventListener('fetch', function(e) {});";
+                var swBlob = new Blob([swCode], { type: 'application/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(function(){});
+            }
+        })();
+
         var config = {
             apiKey: "AIzaSyA637ooMYUfNbhBeQgvUSqdcDCRHR8a5GY",
             authDomain: "eqos-4c3b0.firebaseapp.com",
@@ -396,9 +400,8 @@
         }
         var auth = firebase.auth(), db = firebase.firestore();
 
-        // 8. MODO OFFLINE CON SINCRONIZACIÓN AUTOMÁTICA
         db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
-            console.log("Persistencia offline no disponible:", err.code);
+            console.log("Persistencia offline:", err.code);
         });
 
         var selectedMood = "";
@@ -418,6 +421,7 @@
             'alegre': 'Alegre', 'divertido': 'Divertido', 'normal': 'Normal', 'estresado': 'Estresado',
             'triste': 'Triste', 'cansado': 'Cansado', 'frustrante': 'Frustrante', 'aburrido': 'Aburrido'
         };
+        var mesesNombres = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
         var evalSections = [
             {
@@ -596,10 +600,8 @@
         }
 
         window.onload = function() {
-            // 9. CARGAR PREFERENCIAS DE TEMA Y TAMAÑO DE LETRA
             applySavedPreferences();
 
-            // 6. COMPROBAR BLOQUEO POR PIN
             var savedPin = localStorage.getItem('eqos_pin');
             if (savedPin && savedPin.length === 4) {
                 document.getElementById('pin-screen').style.display = 'flex';
@@ -620,7 +622,6 @@
             });
         };
 
-        /* 9. PREFERENCIAS DE TEMA Y TAMAÑO DE FUENTE */
         function applySavedPreferences() {
             var savedTheme = localStorage.getItem('eqos_theme');
             if (savedTheme === 'dark') {
@@ -629,6 +630,7 @@
                 document.getElementById('img-logo').src = 'logo-eqos-dark.png';
                 document.getElementById('pin-logo').src = 'logo-eqos-dark.png';
                 document.getElementById('img-pen').src = 'pluma_eqos-dark.png';
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#6c4227');
             }
             var savedSize = localStorage.getItem('eqos_font_size') || '2.2rem';
             setFontSize(savedSize, true);
@@ -642,7 +644,7 @@
             if (btn) btn.classList.add('active');
         }
 
-        /* 6. BLOQUEO POR PIN */
+        /* BLOQUEO POR PIN */
         function pressPin(digit) {
             if (pinBuffer.length >= 4) return;
             pinBuffer += digit;
@@ -717,7 +719,7 @@
             renderPinSettingsUI();
         }
 
-        /* 4. RECORDATORIO DIARIO DISCRETO */
+        /* RECORDATORIO DIARIO */
         function checkDailyReminder(hasAnsweredToday) {
             var remTime = localStorage.getItem('eqos_reminder_time');
             var banner = document.getElementById('reminder-banner');
@@ -811,7 +813,6 @@
             }).catch(err => console.error("Error leyendo estado:", err));
         }
 
-        /* CACHÉ DE ENTRADAS Y CÁLCULO DE RACHA (4) */
         function loadAllEntriesCache() {
             if (!auth.currentUser) return;
             db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").get().then(snap => {
@@ -830,7 +831,6 @@
             var checkDate = new Date();
             var idSet = new Set(allUserEntries.filter(e => e.texto || e.mood).map(e => e._id));
 
-            // Si hoy aún no escribió, comprobamos si la racha viene activa desde ayer
             var todayStr = checkDate.getDate() + "-" + (checkDate.getMonth()+1) + "-" + checkDate.getFullYear();
             if (!idSet.has(todayStr)) {
                 checkDate.setDate(checkDate.getDate() - 1);
@@ -967,50 +967,7 @@
                 }).catch(err => console.error("Error cargando historial:", err));
         }
 
-        /* 7. BUSCADOR Y FILTRADO DE RECUERDOS */
-        function openSearchModal() {
-            document.getElementById('search-modal').style.display = 'flex';
-            document.getElementById('search-text-input').value = "";
-            document.getElementById('search-mood-select').value = "";
-            loadAllEntriesCache();
-            setTimeout(filterMemories, 200);
-        }
-
-        function closeSearchModal() {
-            document.getElementById('search-modal').style.display = 'none';
-        }
-
-        function filterMemories() {
-            var q = document.getElementById('search-text-input').value.toLowerCase().trim();
-            var m = document.getElementById('search-mood-select').value;
-            var list = document.getElementById('search-results-list');
-
-            var filtered = allUserEntries.filter(item => {
-                var matchText = !q || (item.texto && item.texto.toLowerCase().includes(q));
-                var matchMood = !m || (item.mood === m);
-                return (item.texto || item.mood) && matchText && matchMood;
-            });
-
-            filtered.sort((a, b) => (b.año - a.año) || (b.mes - a.mes) || (b.dia - a.dia));
-
-            if (filtered.length === 0) {
-                list.innerHTML = `<div style="font-size:0.85rem; opacity:0.65; padding:20px 0; text-align:center;">No se encontraron recuerdos con ese filtro.</div>`;
-                return;
-            }
-
-            var html = "";
-            filtered.forEach(item => {
-                var fechaStr = `${item.dia}/${item.mes}/${item.año}`;
-                var emojiStr = item.mood && emojiMap[item.mood] ? `${emojiMap[item.mood]} ${moodNames[item.mood]}` : "";
-                html += `<div class="search-result-item">
-                    <div class="search-result-meta"><span>${fechaStr}</span><span>${emojiStr}</span></div>
-                    <div class="search-result-txt">${item.texto || "<i>Solo registro emocional</i>"}</div>
-                </div>`;
-            });
-            list.innerHTML = html;
-        }
-
-        /* 5. MAPA ANUAL DE EMOCIONES (365 DÍAS) */
+        /* MAPA EMOCIONAL ORGANIZADO POR MESES */
         function openYearMapModal() {
             var anio = new Date().getFullYear();
             document.getElementById('year-map-title').innerText = `Mapa emocional ${anio}`;
@@ -1023,17 +980,24 @@
                 }
             });
 
-            var gridHtml = "";
-            var start = new Date(anio, 0, 1);
-            var end = new Date(anio, 11, 31);
-            for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                var key = `${d.getDate()}-${d.getMonth() + 1}`;
-                var m = moodByDate[key];
-                var bg = m && moodColors[m] ? moodColors[m] : "transparent";
-                var title = `${d.getDate()}/${d.getMonth() + 1}: ${m ? moodNames[m] : 'Sin registro'}`;
-                gridHtml += `<div class="day-dot" style="background:${bg};" title="${title}"></div>`;
+            var monthsHtml = "";
+            for (var m = 1; m <= 12; m++) {
+                var daysInMonth = new Date(anio, m, 0).getDate();
+                monthsHtml += `<div class="month-card">
+                    <div class="month-card-title">${mesesNombres[m]}</div>
+                    <div class="month-days-grid">`;
+
+                for (var d = 1; d <= daysInMonth; d++) {
+                    var key = `${d}-${m}`;
+                    var mood = moodByDate[key];
+                    var bg = mood && moodColors[mood] ? moodColors[mood] : "transparent";
+                    var title = `${d} de ${mesesNombres[m]}: ${mood ? moodNames[mood] : 'Sin registro'}`;
+                    monthsHtml += `<div class="day-dot" style="background:${bg};" title="${title}"></div>`;
+                }
+
+                monthsHtml += `</div></div>`;
             }
-            document.getElementById('year-grid-container').innerHTML = gridHtml;
+            document.getElementById('months-grid-container').innerHTML = monthsHtml;
 
             var legHtml = "";
             Object.keys(moodColors).forEach(k => {
@@ -1046,7 +1010,7 @@
             document.getElementById('year-map-modal').style.display = 'none';
         }
 
-        /* 1. AUTOEVALUACIÓN MENSUAL + ARCHIVO DE MESES */
+        /* AUTOEVALUACIÓN MENSUAL + ARCHIVO */
         function openMonthlyEval() {
             currentEvalStep = 0;
             evalData = {};
@@ -1086,8 +1050,6 @@
             var container = document.getElementById('eval-history-view');
             if (!auth.currentUser) { container.innerHTML = "<p>Sin sesión activa.</p>"; return; }
             container.innerHTML = "<p style='font-size:0.85rem; opacity:0.7;'>Cargando historial...</p>";
-
-            var mesesNombres = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
             db.collection("usuarios").doc(auth.currentUser.uid).collection("evaluaciones_mensuales").get().then(snap => {
                 if (snap.empty) {
@@ -1204,7 +1166,7 @@
             }
         }
 
-        /* 2. EXPORTACIÓN EDITORIAL A PDF / IMPRESIÓN */
+        /* EXPORTACIÓN EDITORIAL A PDF / IMPRESIÓN */
         function exportarDiario() {
             if (!auth.currentUser) return;
             Promise.all([
@@ -1258,7 +1220,85 @@
             });
         }
 
-        /* 3. VINCULACIÓN DE CUENTA EMAIL / CONTRASEÑA */
+        /* COPIA DE SEGURIDAD JSON (IDEA 10) */
+        function exportarJSON() {
+            if (!auth.currentUser) { alert("Sin sesión activa."); return; }
+            Promise.all([
+                db.collection("usuarios").doc(auth.currentUser.uid).collection("respuestas").get(),
+                db.collection("usuarios").doc(auth.currentUser.uid).collection("evaluaciones_mensuales").get()
+            ]).then(([snapResp, snapEval]) => {
+                var backup = {
+                    app: "Eqos",
+                    exportado: new Date().toISOString(),
+                    respuestas: {},
+                    evaluaciones_mensuales: {}
+                };
+                snapResp.forEach(doc => {
+                    var d = doc.data();
+                    delete d.fecha;
+                    backup.respuestas[doc.id] = d;
+                });
+                snapEval.forEach(doc => {
+                    var d = doc.data();
+                    delete d.fecha;
+                    backup.evaluaciones_mensuales[doc.id] = d;
+                });
+
+                var blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = `eqos-backup-${getHoyId()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }).catch(err => alert("Error al generar copia: " + err.message));
+        }
+
+        function importarJSON(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            if (!auth.currentUser) { alert("Sin sesión activa."); return; }
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    if (!data.respuestas && !data.evaluaciones_mensuales) {
+                        alert("El archivo seleccionado no es una copia válida de Eqos.");
+                        return;
+                    }
+                    if (!confirm("Se restaurarán y combinarán todas las entradas y evaluaciones de este archivo. ¿Continuar?")) return;
+
+                    var batch = db.batch();
+                    var userRef = db.collection("usuarios").doc(auth.currentUser.uid);
+
+                    if (data.respuestas) {
+                        Object.keys(data.respuestas).forEach(docId => {
+                            var item = data.respuestas[docId];
+                            item.fecha = firebase.firestore.FieldValue.serverTimestamp();
+                            batch.set(userRef.collection("respuestas").doc(docId), item, { merge: true });
+                        });
+                    }
+                    if (data.evaluaciones_mensuales) {
+                        Object.keys(data.evaluaciones_mensuales).forEach(docId => {
+                            var item = data.evaluaciones_mensuales[docId];
+                            item.fecha = firebase.firestore.FieldValue.serverTimestamp();
+                            batch.set(userRef.collection("evaluaciones_mensuales").doc(docId), item, { merge: true });
+                        });
+                    }
+
+                    batch.commit().then(() => {
+                        alert("Copia de seguridad restaurada con éxito.");
+                        location.reload();
+                    }).catch(err => alert("Error al restaurar: " + err.message));
+                } catch (err) {
+                    alert("Error leyendo el archivo JSON: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /* VINCULACIÓN DE CUENTA EMAIL / CONTRASEÑA */
         function updateAccountUI(user) {
             var txt = document.getElementById('account-status-text');
             var form = document.getElementById('account-link-form');
@@ -1296,6 +1336,7 @@
             var isD = document.body.classList.contains('dark-mode');
             localStorage.setItem('eqos_theme', isD ? 'dark' : 'light');
             document.getElementById('theme-icon').innerHTML = isD ? '☀︎' : '☾';
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', isD ? '#6c4227' : '#f8f0ea');
 
             var logo = document.getElementById('img-logo');
             var pinLogo = document.getElementById('pin-logo');
