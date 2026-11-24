@@ -26,7 +26,7 @@
             font-size: 1.4rem; padding: 5px; transition: 0.3s; display: inline-flex; 
             align-items: center; justify-content: center; 
         }
-        .icon-svg { width: 20px; height: 20px; stroke: var(--brown); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .icon-svg { width: 20px; height: 20px; stroke: var(--brown); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: 0.3s; }
 
         .date-label { text-align: left; font-size: 12px; margin-bottom: 2px; font-weight: bold; opacity: 0.8; }
         .q-main { font-size: 1.5rem; font-weight: 700; margin: 0 0 20px 0; font-style: italic; line-height: 1.2; text-align: left; min-height: 50px; }
@@ -125,8 +125,9 @@
 
     <div id="screen-app" class="container">
         <div class="header-top">
-            <img src="logo_eqos.png" id="img-logo" class="logo" alt="Eqos">
+            <img src="logo_eqos.png" id="img-logo" class="logo" alt="Eqos" onerror="handleLogoFallback(this)">
             <div class="top-nav">
+                <!-- Calendario SVG Monocromo -->
                 <button class="icon-btn" onclick="openMonthlyEval()" title="Evaluación Mensual">
                     <svg class="icon-svg" viewBox="0 0 24 24">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -138,7 +139,13 @@
                         <circle cx="16" cy="15" r="1" fill="var(--brown)"></circle>
                     </svg>
                 </button>
-                <button class="icon-btn" onclick="toggleModal(true)">🛠</button> 
+                <!-- Ajustes SVG Monocromo -->
+                <button class="icon-btn" onclick="toggleModal(true)" title="Ajustes">
+                    <svg class="icon-svg" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button> 
                 <button class="icon-btn" id="theme-icon" onclick="toggleT()">☾</button> 
                 <button class="icon-btn" onclick="logout()">&#10005;</button>
             </div>
@@ -150,7 +157,7 @@
         <div id="text-zone">
             <div class="write-zone">
                 <textarea id="main-input" class="daily-input" placeholder="Comienza a escribir..."></textarea>
-                <img src="pluma_eqos.png" id="img-pen" class="pen" onclick="handlePenClick()" alt="Guardar">
+                <img src="pluma_eqos.png" id="img-pen" class="pen" onclick="handlePenClick()" alt="Guardar" onerror="handlePenFallback(this)">
             </div>
         </div>
 
@@ -396,15 +403,14 @@
                 } else {
                     auth.signInAnonymously().catch(err => {
                         console.error("Error Auth:", err);
-                        alert("Error de conexión con Firebase (" + err.code + "). Añade este dominio en Firebase > Authentication > Settings > Authorized domains.");
                     });
                 }
             });
         };
 
         function initApp() {
-            // Precarga de imágenes del modo noche
             new Image().src = 'logo-eqos-dark.png';
+            new Image().src = 'logo_eqos-dark.png';
             new Image().src = 'pluma_eqos-dark.png';
 
             var hoy = new Date();
@@ -415,6 +421,26 @@
             var diaIdx = Math.floor((hoy - inicio) / 86400000) - 1;
             if (typeof qList !== 'undefined' && qList[diaIdx]) {
                 document.getElementById('question-label').innerText = qList[diaIdx];
+            }
+        }
+
+        function handleLogoFallback(img) {
+            if (!img.dataset.triedUnderscore && img.src.includes('logo-eqos-dark.png')) {
+                img.dataset.triedUnderscore = "1";
+                img.src = 'logo_eqos-dark.png';
+            } else if (!img.dataset.triedLight) {
+                img.dataset.triedLight = "1";
+                img.src = 'logo_eqos.png';
+            }
+        }
+
+        function handlePenFallback(img) {
+            if (!img.dataset.triedDash && img.src.includes('pluma_eqos-dark.png')) {
+                img.dataset.triedDash = "1";
+                img.src = 'pluma-eqos-dark.png';
+            } else if (!img.dataset.triedLight) {
+                img.dataset.triedLight = "1";
+                img.src = 'pluma_eqos.png';
             }
         }
 
@@ -654,7 +680,7 @@
             }
         }
 
-        /* MODO NOCHE CON ARCHIVOS ESPECÍFICOS */
+        /* MODO NOCHE */
         function toggleT() {
             document.body.classList.toggle('dark-mode');
             var isD = document.body.classList.contains('dark-mode');
@@ -662,6 +688,10 @@
 
             var logo = document.getElementById('img-logo');
             var pen = document.getElementById('img-pen');
+            logo.dataset.triedUnderscore = "";
+            logo.dataset.triedLight = "";
+            pen.dataset.triedDash = "";
+            pen.dataset.triedLight = "";
 
             if (isD) {
                 logo.src = 'logo-eqos-dark.png';
