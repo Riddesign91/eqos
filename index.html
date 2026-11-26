@@ -23,6 +23,25 @@
         body { background: var(--bg); color: var(--brown); font-family: 'Playfair Display', serif; margin: 0; transition: background 0.5s, color 0.5s; overflow-x: hidden; }
         .container { width: 92%; max-width: 500px; margin: 0 auto; padding: 10px 0 40px 0; text-align: center; display: none; }
         
+        /* PANTALLA DE REGISTRO / LOGIN OBLIGATORIO */
+        #auth-screen {
+            display: none; min-height: 100vh; width: 100%; box-sizing: border-box;
+            flex-direction: column; align-items: center; justify-content: center; padding: 24px;
+        }
+        .auth-box {
+            width: 100%; max-width: 340px; text-align: center;
+        }
+        .auth-subtitle { font-size: 0.92rem; font-style: italic; opacity: 0.8; margin: 8px 0 24px 0; }
+        .auth-tabs { display: flex; border-bottom: 1px solid var(--border-soft); margin-bottom: 18px; }
+        .auth-tab {
+            flex: 1; background: none; border: none; padding: 10px; font-family: 'Playfair Display', serif;
+            font-size: 0.95rem; color: var(--brown); opacity: 0.5; cursor: pointer; transition: 0.3s;
+        }
+        .auth-tab.active { opacity: 1; font-weight: bold; border-bottom: 2px solid var(--brown); }
+        .auth-error { font-size: 0.8rem; color: #b53838; margin: 6px 0 12px 0; min-height: 18px; }
+        body.dark-mode .auth-error { color: #ffb4b4; }
+        .auth-link { background: none; border: none; color: var(--brown); font-family: 'Playfair Display', serif; font-size: 0.8rem; text-decoration: underline; opacity: 0.75; cursor: pointer; margin-top: 12px; }
+
         /* CABECERA */
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 2px; }
         .logo { width: 85px; transition: 0.3s; }
@@ -89,8 +108,8 @@
         /* BOTONES E INPUTS */
         .btn-brown {
             background: var(--brown); color: var(--bg); border: 1px solid var(--brown); 
-            padding: 10px 14px; cursor: pointer; font-family: 'Playfair Display', serif; 
-            font-size: 0.85rem; border-radius: 2px; transition: 0.3s; text-align: center;
+            padding: 11px 14px; cursor: pointer; font-family: 'Playfair Display', serif; 
+            font-size: 0.88rem; border-radius: 2px; transition: 0.3s; text-align: center;
         }
         .btn-outline {
             background: transparent; color: var(--brown); border: 1px solid var(--brown); 
@@ -100,8 +119,8 @@
         .btn-full { width: 100%; display: block; margin-bottom: 10px; box-sizing: border-box; }
         .input-clean {
             width: 100%; background: var(--card-bg); border: 1px solid var(--border-soft);
-            color: var(--brown); font-family: 'Playfair Display', serif; font-size: 0.92rem; padding: 8px 10px;
-            box-sizing: border-box; outline: none; border-radius: 3px; margin-bottom: 8px;
+            color: var(--brown); font-family: 'Playfair Display', serif; font-size: 0.92rem; padding: 10px 12px;
+            box-sizing: border-box; outline: none; border-radius: 3px; margin-bottom: 10px;
         }
 
         /* PESTAÑAS EVALUACIÓN MENSUAL */
@@ -158,6 +177,29 @@
 </head>
 <body>
 
+    <!-- PANTALLA DE REGISTRO / INICIO DE SESIÓN -->
+    <div id="auth-screen">
+        <div class="auth-box">
+            <img src="logo_eqos.png" id="auth-logo" style="width:115px; margin-bottom:4px;" alt="Eqos" onerror="handleLogoFallback(this)">
+            <div class="auth-subtitle">Tu espacio íntimo de reflexión</div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-register" onclick="switchAuthMode('register')">Crear cuenta</button>
+                <button class="auth-tab" id="tab-login" onclick="switchAuthMode('login')">Iniciar sesión</button>
+            </div>
+
+            <form onsubmit="submitAuthForm(event)">
+                <input type="email" id="auth-email" class="input-clean" placeholder="Correo electrónico" required autocomplete="email">
+                <input type="password" id="auth-pass" class="input-clean" placeholder="Contraseña (mín. 6 caracteres)" required autocomplete="current-password">
+                <input type="password" id="auth-pass-confirm" class="input-clean" placeholder="Repite la contraseña" required autocomplete="new-password">
+                <div id="auth-error-msg" class="auth-error"></div>
+                <button type="submit" class="btn-brown btn-full" id="auth-submit-btn">Registrarme en Eqos</button>
+            </form>
+
+            <button type="button" class="auth-link" id="forgot-pass-btn" style="display:none;" onclick="resetUserPassword()">¿Olvidaste tu contraseña?</button>
+        </div>
+    </div>
+
     <!-- PANTALLA DE BLOQUEO POR PIN -->
     <div id="pin-screen">
         <img src="logo_eqos.png" id="pin-logo" style="width:95px; margin-bottom:10px;" alt="Eqos" onerror="handleLogoFallback(this)">
@@ -184,6 +226,7 @@
         </div>
     </div>
 
+    <!-- APLICACIÓN PRINCIPAL -->
     <div id="screen-app" class="container">
         <div class="header-top">
             <img src="logo_eqos.png" id="img-logo" class="logo" alt="Eqos" onerror="handleLogoFallback(this)">
@@ -302,18 +345,11 @@
                     </div>
                 </div>
 
-                <!-- Cuenta y Sincronización -->
+                <!-- Cuenta activa y Cerrar sesión -->
                 <div class="settings-group" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
-                    <span class="settings-label">Cuenta y respaldo en la nube</span>
-                    <div id="account-status-text" style="font-size:0.78rem; opacity:0.8; margin-bottom:8px;"></div>
-                    <div id="account-link-form">
-                        <input type="email" id="acc-email" class="input-clean" placeholder="Tu correo electrónico">
-                        <input type="password" id="acc-pass" class="input-clean" placeholder="Contraseña (mín. 6 caracteres)">
-                        <div style="display:flex; gap:8px;">
-                            <button class="btn-brown" style="flex:1;" onclick="vincularEmail()">Guardar cuenta</button>
-                            <button class="btn-outline" style="flex:1;" onclick="iniciarSesionEmail()">Entrar</button>
-                        </div>
-                    </div>
+                    <span class="settings-label">Cuenta conectada</span>
+                    <div id="account-status-text" style="font-size:0.82rem; opacity:0.85; margin-bottom:10px;"></div>
+                    <button class="btn-outline btn-full" style="margin-bottom:0;" onclick="logout()">Cerrar sesión</button>
                 </div>
             </div>
         </div>
@@ -362,7 +398,7 @@
     </div>
 
     <script>
-        /* CONFIGURACIÓN PWA NATIVA (IDEA 2) */
+        /* CONFIGURACIÓN PWA NATIVA */
         (function setupPWA() {
             var baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
             var manifestObj = {
@@ -400,10 +436,16 @@
         }
         var auth = firebase.auth(), db = firebase.firestore();
 
+        // Persistencia local de sesión en el dispositivo
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(err) {
+            console.log("Persistencia Auth:", err);
+        });
+
         db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
             console.log("Persistencia offline:", err.code);
         });
 
+        var authMode = 'register'; // 'register' | 'login'
         var selectedMood = "";
         var allUserEntries = [];
         var emojiMap = { 'alegre':'😊','divertido':'😋','normal':'😐','estresado':'🤯','triste':'😔','cansado':'😴','frustrante':'😫','aburrido':'😑' };
@@ -601,26 +643,135 @@
 
         window.onload = function() {
             applySavedPreferences();
-
-            var savedPin = localStorage.getItem('eqos_pin');
-            if (savedPin && savedPin.length === 4) {
-                document.getElementById('pin-screen').style.display = 'flex';
-            } else {
-                document.getElementById('screen-app').style.display = 'block';
-            }
-
             initApp();
 
             auth.onAuthStateChanged(user => {
-                if (user) {
+                if (user && !user.isAnonymous) {
+                    // Usuario registrado con sesión persistente en este dispositivo
+                    document.getElementById('auth-screen').style.display = 'none';
                     updateAccountUI(user);
                     checkStatus();
                     loadAllEntriesCache();
+
+                    var savedPin = localStorage.getItem('eqos_pin');
+                    if (savedPin && savedPin.length === 4) {
+                        document.getElementById('pin-screen').style.display = 'flex';
+                        document.getElementById('screen-app').style.display = 'none';
+                    } else {
+                        document.getElementById('pin-screen').style.display = 'none';
+                        document.getElementById('screen-app').style.display = 'block';
+                    }
                 } else {
-                    auth.signInAnonymously().catch(err => console.error("Error Auth:", err));
+                    // Si había una sesión anónima antigua, la cerramos para exigir registro
+                    if (user && user.isAnonymous) {
+                        auth.signOut();
+                    }
+                    document.getElementById('screen-app').style.display = 'none';
+                    document.getElementById('pin-screen').style.display = 'none';
+                    document.getElementById('auth-screen').style.display = 'flex';
                 }
             });
         };
+
+        /* GESTIÓN DE REGISTRO E INICIO DE SESIÓN */
+        function switchAuthMode(mode) {
+            authMode = mode;
+            document.getElementById('auth-error-msg').innerText = "";
+            var tabReg = document.getElementById('tab-register');
+            var tabLog = document.getElementById('tab-login');
+            var confirmInput = document.getElementById('auth-pass-confirm');
+            var submitBtn = document.getElementById('auth-submit-btn');
+            var forgotBtn = document.getElementById('forgot-pass-btn');
+
+            if (mode === 'register') {
+                tabReg.classList.add('active');
+                tabLog.classList.remove('active');
+                confirmInput.style.display = 'block';
+                confirmInput.required = true;
+                submitBtn.innerText = 'Registrarme en Eqos';
+                forgotBtn.style.display = 'none';
+            } else {
+                tabLog.classList.add('active');
+                tabReg.classList.remove('active');
+                confirmInput.style.display = 'none';
+                confirmInput.required = false;
+                submitBtn.innerText = 'Entrar a mi diario';
+                forgotBtn.style.display = 'inline-block';
+            }
+        }
+
+        function submitAuthForm(e) {
+            e.preventDefault();
+            var email = document.getElementById('auth-email').value.trim();
+            var pass = document.getElementById('auth-pass').value;
+            var errBox = document.getElementById('auth-error-msg');
+            var btn = document.getElementById('auth-submit-btn');
+            errBox.innerText = "";
+
+            if (pass.length < 6) {
+                errBox.innerText = "La contraseña debe tener al menos 6 caracteres.";
+                return;
+            }
+
+            if (authMode === 'register') {
+                var pass2 = document.getElementById('auth-pass-confirm').value;
+                if (pass !== pass2) {
+                    errBox.innerText = "Las contraseñas no coinciden.";
+                    return;
+                }
+                btn.disabled = true;
+                btn.innerText = "Creando cuenta...";
+                auth.createUserWithEmailAndPassword(email, pass)
+                    .then(() => {
+                        btn.disabled = false;
+                    })
+                    .catch(err => {
+                        btn.disabled = false;
+                        btn.innerText = "Registrarme en Eqos";
+                        errBox.innerText = translateAuthError(err.code, err.message);
+                    });
+            } else {
+                btn.disabled = true;
+                btn.innerText = "Entrando...";
+                auth.signInWithEmailAndPassword(email, pass)
+                    .then(() => {
+                        btn.disabled = false;
+                    })
+                    .catch(err => {
+                        btn.disabled = false;
+                        btn.innerText = "Entrar a mi diario";
+                        errBox.innerText = translateAuthError(err.code, err.message);
+                    });
+            }
+        }
+
+        function resetUserPassword() {
+            var email = document.getElementById('auth-email').value.trim();
+            var errBox = document.getElementById('auth-error-msg');
+            if (!email) {
+                errBox.innerText = "Escribe tu correo arriba para enviarte el enlace de recuperación.";
+                return;
+            }
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    alert("Te hemos enviado un correo para restablecer tu contraseña.");
+                })
+                .catch(err => {
+                    errBox.innerText = translateAuthError(err.code, err.message);
+                });
+        }
+
+        function translateAuthError(code, fallback) {
+            switch (code) {
+                case 'auth/email-already-in-use': return "Este correo ya está registrado. Cambia a 'Iniciar sesión'.";
+                case 'auth/invalid-email': return "El formato del correo no es válido.";
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential': return "Correo o contraseña incorrectos.";
+                case 'auth/weak-password': return "La contraseña debe tener al menos 6 caracteres.";
+                default: return fallback;
+            }
+        }
 
         function applySavedPreferences() {
             var savedTheme = localStorage.getItem('eqos_theme');
@@ -628,6 +779,7 @@
                 document.body.classList.add('dark-mode');
                 document.getElementById('theme-icon').innerHTML = '☀︎';
                 document.getElementById('img-logo').src = 'logo-eqos-dark.png';
+                document.getElementById('auth-logo').src = 'logo-eqos-dark.png';
                 document.getElementById('pin-logo').src = 'logo-eqos-dark.png';
                 document.getElementById('img-pen').src = 'pluma_eqos-dark.png';
                 document.querySelector('meta[name="theme-color"]').setAttribute('content', '#6c4227');
@@ -1220,7 +1372,7 @@
             });
         }
 
-        /* COPIA DE SEGURIDAD JSON (IDEA 10) */
+        /* COPIA DE SEGURIDAD JSON */
         function exportarJSON() {
             if (!auth.currentUser) { alert("Sin sesión activa."); return; }
             Promise.all([
@@ -1298,36 +1450,11 @@
             reader.readAsText(file);
         }
 
-        /* VINCULACIÓN DE CUENTA EMAIL / CONTRASEÑA */
         function updateAccountUI(user) {
             var txt = document.getElementById('account-status-text');
-            var form = document.getElementById('account-link-form');
-            if (user && !user.isAnonymous && user.email) {
-                txt.innerHTML = `Sesión sincronizada con: <strong>${user.email}</strong>`;
-                form.innerHTML = `<button class="btn-outline btn-full" onclick="logout()">Cerrar sesión</button>`;
-            } else {
-                txt.innerText = "Sesión local activa. Vincula un correo para no perder tus entradas al cambiar de dispositivo.";
+            if (user && user.email) {
+                txt.innerHTML = `Sesión iniciada como: <strong>${user.email}</strong>`;
             }
-        }
-
-        function vincularEmail() {
-            var email = document.getElementById('acc-email').value.trim();
-            var pass = document.getElementById('acc-pass').value;
-            if (!email || pass.length < 6) { alert("Introduce un correo válido y contraseña de al menos 6 caracteres."); return; }
-            var cred = firebase.auth.EmailAuthProvider.credential(email, pass);
-            auth.currentUser.linkWithCredential(cred).then(res => {
-                updateAccountUI(res.user);
-                alert("¡Cuenta vinculada! Todo tu historial ya está respaldado con tu correo.");
-            }).catch(err => alert("Error al vincular: " + err.message));
-        }
-
-        function iniciarSesionEmail() {
-            var email = document.getElementById('acc-email').value.trim();
-            var pass = document.getElementById('acc-pass').value;
-            if (!email || !pass) { alert("Introduce tu correo y contraseña."); return; }
-            auth.signInWithEmailAndPassword(email, pass).then(() => {
-                location.reload();
-            }).catch(err => alert("Error al iniciar sesión: " + err.message));
         }
 
         /* MODO NOCHE CON PERSISTENCIA */
@@ -1339,6 +1466,7 @@
             document.querySelector('meta[name="theme-color"]').setAttribute('content', isD ? '#6c4227' : '#f8f0ea');
 
             var logo = document.getElementById('img-logo');
+            var authLogo = document.getElementById('auth-logo');
             var pinLogo = document.getElementById('pin-logo');
             var pen = document.getElementById('img-pen');
             logo.dataset.triedUnderscore = "";
@@ -1348,10 +1476,12 @@
 
             if (isD) {
                 logo.src = 'logo-eqos-dark.png';
+                authLogo.src = 'logo-eqos-dark.png';
                 pinLogo.src = 'logo-eqos-dark.png';
                 pen.src = 'pluma_eqos-dark.png';
             } else {
                 logo.src = 'logo_eqos.png';
+                authLogo.src = 'logo_eqos.png';
                 pinLogo.src = 'logo_eqos.png';
                 pen.src = 'pluma_eqos.png';
             }
@@ -1375,7 +1505,9 @@
             document.getElementById('settings-modal').style.display = v ? 'flex' : 'none'; 
         }
 
-        function logout() { auth.signOut().then(() => location.reload()); }
+        function logout() { 
+            auth.signOut().then(() => location.reload()); 
+        }
     </script>
 </body>
 </html>
